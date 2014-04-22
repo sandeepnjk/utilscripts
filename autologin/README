@@ -1,0 +1,74 @@
+Dependencies:
+1. pass
+2. gpg
+3. beep (optional)
+
+
+Setting up you password key store:
+
+Step 1:
+Briefly covering Ubuntu - Setting up Unix password manager
+Reference: http://www.cyberciti.biz/tips/linux-how-to-create-our-own-gnupg-privatepublic-key.html
+To Install gpg
+$sudo apt-get install gnupg
+
+Step 2:
+Creating a public private key.
+$gpg --gen-key
+#The above is an interactive program.Note: for kind of key choose the appropriate number shown for 'DSA and Elgamal'
+Reference: http://www.cyberciti.biz/tips/linux-how-to-create-our-own-gnupg-privatepublic-key.html
+
+Step 3:
+# Once completed Please notedown the keyId.
+$gpg --list-keys
+/home/sandeepn/.gnupg/pubring.gpg
+---------------------------------
+pub   2048D/1241847A 2014-04-15
+uid                  Sandeep Nanajkar (sn) <sandeepnjk@gmail.com>
+sub   2048g/63A9AA88 2014-04-15
+
+ie... 1241847A is my gpg KeyID.
+
+Step 4:
+#Install the Password Manager ie. pass
+- What is pass?
+  With pass, each password lives inside of a gpg encrypted file whose filename is the title of the website or resource that requires the password.
+- Why is pass required here?
+  autolog needs the user password to login. As autolog is a non-interactive tool (used by crontab) the script will pickup the password from the Password Manager (i.e pass).
+- Reference: http://www.zx2c4.com/projects/password-store/
+- Sidenote(optional): pass is git aware. so your gpg encrypted file(s) could reside on your git repo. (check Reference)
+
+Install pass 
+$sudo apt-get install pass
+Update .bashrc to run the ../password-store script to ensure bash completion for pass command. 
+$echo "source /etc/bash_completion.d/password-store" >> ~/.bashrc
+
+Step 5:
+Initializing the pass
+$pass init "give your gpg key id here"
+eg:- $pass init "1241847A"
+
+Step 6:
+Adding password to the password store.
+$pass insert Business/imaginea/ldap/pass
+Enter password for Business/imaginea/ldap/pass:
+
+Step 7:
+To view your Password Store Structure
+$pass
+Password Store
+`-- Business
+    `-- imaginea
+        |-- ldap
+        `-- quickbas
+
+Step 8:
+Install beep (optional) - Will beep briefly if autologin fails.
+$sudo apt-get install beep
+$sudo vi /etc/modprobe.d/blacklist.conf
+Comment out line that says blacklist pcspkr so it looks like this:
+# ugly and loud noise, getting on everyone's nerves; this should be done by a
+# nice pulseaudio bing (Ubuntu: #77010)
+# blacklist pcspkr
+
+
