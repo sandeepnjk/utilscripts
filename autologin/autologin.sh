@@ -8,7 +8,20 @@
 #//TODO: cygwin,darwin compatibility and windows service
 #//TODO: move out $fileName to args.
 #//TODO: moveout host1,host2 for internet and intranet out.
-. autologin.conf
+scriptPath() {
+    pushd . > /dev/null
+    SCRIPT_PATH="${BASH_SOURCE[0]}";
+    while([ -h "${SCRIPT_PATH}" ]); do
+        cd "`dirname "${SCRIPT_PATH}"`"
+        SCRIPT_PATH="$(readlink "`basename "${SCRIPT_PATH}"`")";
+    done
+    cd "`dirname "${SCRIPT_PATH}"`" > /dev/null
+    SCRIPT_PATH="`pwd`";
+    popd  > /dev/null
+    echo "${SCRIPT_PATH}"
+}
+
+. $(scriptPath)/autologin.conf
 
 alarm() {
     if hash beep 2>/dev/null; then

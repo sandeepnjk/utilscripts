@@ -1,0 +1,51 @@
+You can use either ffmpeg or avconv. 
+=== Background (optional)=== (ref: http://askubuntu.com/questions/432542/is-ffmpeg-missing-from-the-official-repositories-in-14-04)
+Ubuntu started shipping the libav fork instead of FFmpeg in recent releases. If you installed the ffmpeg package, then you actually installed the libav-tools package and a program that told you to use avconv instead of ffmpeg in the future, giving the impression that ffmpeg is deprecated, which it is not.
+
+The transitional ffmpeg package seems to have been removed from trusty/Ubuntu 14.04, probably from 13.04 itself, (compare the package files listing for saucy and trusty of the source package). 
+
+So one option is to install the libav-tools package and use avconv instead (NB that this is not "mainline" FFmpeg but a prominent fork instead).
+
+=== requirements for this script ====
+avconv
+libx264 (or whatever codec you prefer)
+
+To install avconv:
+sudo apt-get install libav-tools
+
+To install your codecs:
+sudo apt-get install libavcodec-extra-53
+
+To check for a codec:
+avconv -codecs | grep "264"
+[screencast]$avconv -codecs | grep "264"
+avconv version 0.8.9-6:0.8.9-0ubuntu0.13.04.1, Copyright (c) 2000-2013 the Libav developers
+  built on Nov  9 2013 19:09:48 with gcc 4.7.3
+ D V D  h264            H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10
+ D V D  h264_vdpau      H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (VDPAU acceleration)
+  EV    libx264         libx264 H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10
+
+==== usage ======
+screencast
+
+==== additional ======
+script has been tested on ubuntu 13.04.
+
+avconv -i /tmp/noise.mp4 -same_quant tmpaud.wav
+sudo apt-get install sox
+avconv -i noise.mp4 -vn -ss 00:00:00 -t 00:00:05 noiseaud.wav
+sox noiseaud.wav -n noiseprof noise.prof
+avconv -i test1.mp4 -same_quant -an test1-video.mp4
+avconv -i test1.mp4 -same_quant teat1-audio.wav
+sox teat1-audio.wav test1-audio-clean.wav noisered noise.prof 0.21
+avconv -i test1-audio-clean.wav -i test1-video.mp4 -same_quant test1-nonoise.mp4
+
+avconv -f video4linux2 -s 5x5 -i /dev/video0 /tmp/selfie5.mp4
+xcowsay --cow-size=large --time=3 --monitor=0 "Your video has been recorded:-)"
+avconv -i /tmp/test1-nonoise.mp4 -vf "movie=/tmp/selfie5.mp4[inner];[in][inner] overlay=70:70 [out]" test1-nonoise-selfie.mp4
+
+ffmpeg.exe -i master_video.mp4 -vf "movie=smaller_inner_video.mp4[inner]; 
+[in][inner] overlay=70:70 [out]" completed.mp4
+
+
+
