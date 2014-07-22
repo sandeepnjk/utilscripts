@@ -1,0 +1,108 @@
+#!/bin/bash
+##################################################
+# A quick utility to create a screencast.        #
+# For more features use avconv or ffmpeg directly#
+##################################################
+
+#!/bin/sh
+scriptPath() {
+    pushd . > /dev/null
+    SCRIPT_PATH="${BASH_SOURCE[0]}";
+    while([ -h "${SCRIPT_PATH}" ]); do
+        cd "`dirname "${SCRIPT_PATH}"`"
+        SCRIPT_PATH="$(readlink "`basename "${SCRIPT_PATH}"`")";
+    done
+    cd "`dirname "${SCRIPT_PATH}"`" > /dev/null
+    SCRIPT_PATH="`pwd`";
+    popd  > /dev/null
+    echo "${SCRIPT_PATH}"
+}
+
+sp="$(scriptPath)"
+. ${sp}/screencast.conf
+scrcastHome="$(scriptPath)/Videos"
+name="sc-`date +'%m%d%Y%-H%M%S'`"
+#echo "Enter the output file name: "; read name
+mkdir -p "${scrcastHome}/tmp"
+
+caliberateNoise() {
+  avconv -timelimit 5 -f alsa -i pulse  ${scrcastHome}/tmp/noiseRaw-${name}.mp4
+  avconv -i ${scrcastHome}/tmp/noiseRaw-${name}.mp4 -vn -ss 00:00:00 -t 00:00:03 ${scrcastHome}/tmp/noiseRaw-${name}.wav
+  sox ${scrcastHome}/tmp/noiseRaw-${name}.wav -n noiseprof ${sp}/noise.prof
+}
+
+cleanup () {
+  rm -rf "${scrcastHome}/tmp" > /dev/null 2>&1
+}
+
+startSC() {
+  interimName="${scrcastHome}/tmp/${name}-interim-xxyy.mp4"
+  mergedClean="${scrcastHome}/tmp/${name}-mergedclean-xxyy.mp4"
+  finalName="${scrcastHome}/${name}.mp4"
+  onlyAudio="${scrcastHome}/tmp/${name}-audio-xxyy.wav"
+  onlyVideo="${scrcastsHome}/tmp/${name}-video-xxyy.mp4"
+  selfieVideo="${scrcastHome}/tmp/${name}-selfie-xxyy.mp4"
+  onlyAudioCleaned="${scrcastsHome}/tmp/${name}-audio-cleaned-xxyy.wav"
+  mergedSelfieVideo="${scrcastHome}/tmp/${name}-mergedselfie-xxyy.mp4"
+  watermark="./pramati.png"
+  fullscreen=$(xwininfo -root | grep 'geometry' | awk '{print $2;}')
+  if [ $selfie -eq 1 ]
+  then
+    avconv -f video4linux2 -s 5x5 -r 5 -i $video_dev -vf "unsharp=luma_msize_x=7:luma_msize_y=7:luma_amount=2.5" -codec:v libx264 -preset ultrafast -threads 4 -y ${selfieVideo} > /dev/null 2>&1 &
+    selfie_pid=$!
+    disown
+  fi
+
+  avconv -f alsa -i pulse -f x11grab -r 5 -s $fullscreen -same_quant -i :0.0 -vcodec libx264 -preset ultrafast -threads 4 -y ${interimName} > /dev/null 2>&1
+  kill -9 ${selfie_pid} > /dev/null 2>&1
+
+  avconv -i ${interimName} -same_quant -an ${onlyVideo} > /dev/null 2>&1
+  avconv -i ${interimName} -same_quant ${onlyAudio} > /dev/null 2>&1
+  sox ${onlyAudio} ${onlyAudioCleaned} noisered noise.prof 0.21 > /dev/null 2>&1
+  if [ $selfie -eq 1 ]
+  then
+      avconv \
+	  -same_quant -i ${onlyAudioCleaned} \
+	  -same_quant -i ${onlyVideo} \
+	  -vf "movie=${selfieVideo} [selfie]; [in][selfie] overlay=main_w-overlay_w-10:main_h-overlay_h-10 [T1]; movie=${watermark} [watermark];[T1][watermark] overlay=main_w-overlay_w-15:main_h-overlay_h-600 [out]" -y ${finalName} > /dev/null 2>&1
+  else
+      avconv \
+	  -same_quant -i ${onlyAudioCleaned} \
+	  -same_quant -i ${onlyVideo} \
+	  -vf "movie=${watermark} [watermark];[in][watermark] overlay=main_w-overlay_w-15:main_h-overlay_h-600 [out]" -y ${finalName} > /dev/null 2>&1
+  fi
+}
+
+usage() {
+    echo -e "usage: $0 [-n]|[-s]|[-h]\\n\\t \
+	-n=>caliberate noise and exit\\n\\t \
+	-s=>screencast, audio with selfie\\n\\t \
+	-r=>screencast and audio only\\n\\t \
+	-h=help\\n \
+	Please refer to README for more details."    
+}
+
+while getopts "rsn" o; do
+    case "${o}" in
+	s)
+	    selfie=1
+	    startSC
+	    cleanup
+	    ;;
+	r)
+	    selfie=0
+	    startSC
+	    cleanup
+	    ;;
+	n)
+	    caliberateNoise
+	    cleanup
+	    ;;
+	*)
+	    usage
+	    break
+	    ;;
+    esac
+done
+shift $((OPTIND-1))
+
