@@ -3,7 +3,7 @@ to create quick screencasts.
 For usage please type screencast -h.
 
 The screencast videos will be created in the ./Videos folder.
-Currently this script supports ubuntu, mac osx and windoze version 
+Currently this script supports ubuntu only. mac osx and windoze version 
 will be added. 
 
 
