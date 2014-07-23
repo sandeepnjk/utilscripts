@@ -2,7 +2,7 @@ screencast is a utility script using avconv of the libav project
 to create quick screencasts.
 For usage please type screencast -h.
 
-The screencast videos will be created in the ./Videos folder.
+The screencast videos will be created in te ./Videos folder.
 Currently this script supports ubuntu only. mac osx and windoze version 
 will be added. 
 
