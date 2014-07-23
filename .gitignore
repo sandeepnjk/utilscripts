@@ -4,3 +4,6 @@
 *.DS_Store
 *.swp
 *.out
+*.mp4
+*/Videos/*
+*/tmp/*
