@@ -47,15 +47,15 @@ mergedSelfieVideo="${scrcastHome}/tmp/${name}-mergedselfie-xxyy.mp4"
 watermark="./pramati.png"
 fullscreen=$(xwininfo -root | grep 'geometry' | awk '{print $2;}')
 
+
 #echo "Enter the output file name: "; read name
 mkdir -p "${scrcastHome}/tmp"
 
 createOutputOptionsString() {
     if [ $profile == 'raw' ]; then
-	outputOptions="-same_quant"
-	#finalName=${finalName/'mp4'/'avi'}
+	outputOptions="-pix_fmt yuv444p -acodec libvo_aacenc -vcodec libx264"
     else
-	outputOptions="-pix_fmt yuv420p -b:v ${video_br} -r:v ${video_fps} -b:a ${audio_br}"
+	outputOptions="-vcodec libx264 -preset ultrafast -threads 4 -pix_fmt yuv420p -b:v ${video_br} -r:v ${video_fps} -b:a ${audio_br}"
     fi
     echo $outputOptions
 }
@@ -90,8 +90,8 @@ setTuningParams() {
 caliberateNoise() {
     if [ $(($option_mask & $OPTION_CALIBERATE)) -eq $OPTION_CALIBERATE ]; then
 	avconv -timelimit 5 -f alsa -i pulse  ${scrcastHome}/tmp/noiseRaw-${name}.mp4 > /dev/null 2>&1
-	avconv -i ${scrcastHome}/tmp/noiseRaw-${name}.mp4 -vn -ss 00:00:00 -t 00:00:03 ${scrcastHome}/tmp/noiseRaw-${name}.wav  > /dev/null 2>&1
-	sox ${scrcastHome}/tmp/noiseRaw-${name}.wav -n noiseprof ${sp}/noise.prof > /dev/null 2>&1
+	avconv -i ${scrcastHome}/tmp/noiseRaw-${name}.mp4 -vn -ss 00:00:00 -t 00:00:03 ${scrcastHome}/tmp/noiseRaw-${name}.mp4  > /dev/null 2>&1
+	sox ${scrcastHome}/tmp/noiseRaw-${name}.mp4 -n noiseprof ${sp}/noise.prof > /dev/null 2>&1
     fi
 }
 
@@ -104,14 +104,14 @@ usage() {
 	-n=>caliberate noise and exit\\n\\t \
 	-s=>screencast, audio with selfie\\n\\t \;
 	-r=>screencast and audio only\\n\\t \
-        -p low|med|high|raw => quality of screencast(note: for high ensure > 10GB hdd space and raw has no compression)\\n\\t \ 
+        -p low|med|high|raw => quality of screencast(note: for high ensure > 10GB hdd space and raw is lossless compression i.e occupy more space)\\n\\t \ 
 	-h=help\\n \
 	Please refer to README for more details."    
 }
 
 startSelfie() {
     if [ $(($option_mask & $OPTION_SELFIE)) -eq $OPTION_SELFIE ]; then
-	avconv -f video4linux2 -s 5x5 -same_quant -i $video_dev -vf "unsharp=luma_msize_x=7:luma_msize_y=7:luma_amount=2.5" -codec:v libx264 -preset ultrafast -threads 4 ${outputOptions} -y ${selfieVideo} > /dev/null 2>&1 &
+	avconv -f video4linux2 -s 5x5 -same_quant -i $video_dev -vf "unsharp=luma_msize_x=7:luma_msize_y=7:luma_amount=2.5" ${outputOptions} -y ${selfieVideo} > /dev/null 2>&1 &
 	selfie_pid=$!
 	disown
     fi
@@ -119,13 +119,13 @@ startSelfie() {
 
 stopSelfie() {
     if [ $(($option_mask & $OPTION_SELFIE)) -eq $OPTION_SELFIE ]; then
-	kill -9 ${selfie_pid} > /dev/null 2>&1
+	kill -9 ${selfie_pid} > $redirectNull
     fi
 }
 
 startSceencast() {
     if [ $(($option_mask & $OPTION_SCREENCAST)) -eq $OPTION_SCREENCAST ]; then
-	avconv -f alsa -i pulse -f x11grab -s $fullscreen -same_quant -i :0.0 -vcodec libx264 -preset ultrafast -threads 4 ${outputOptions} -y ${interimName} > /dev/null 2>&1
+	avconv -f alsa -i pulse -f x11grab -s $fullscreen -same_quant -i :0.0 ${outputOptions} -y ${interimName} > /dev/null 2>&1
     fi
 }
 
