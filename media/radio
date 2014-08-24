@@ -1,0 +1,126 @@
+#!/bin/bash
+
+scriptPath() {
+    pushd . > /dev/null
+    SCRIPT_PATH="${BASH_SOURCE[0]}";
+    while([ -h "${SCRIPT_PATH}" ]); do
+        cd "`dirname "${SCRIPT_PATH}"`"
+        SCRIPT_PATH="$(readlink "`basename "${SCRIPT_PATH}"`")";
+    done
+    cd "`dirname "${SCRIPT_PATH}"`" > /dev/null
+    SCRIPT_PATH="`pwd`";
+    popd  > /dev/null
+    echo "${SCRIPT_PATH}"
+}
+
+unset stInfo; declare -A stInfo
+unset stUrl; declare -A stUrl    
+
+createStMap() {
+    CONF_FILE="$(scriptPath)/radio.conf"
+    while read line; do
+	IFS='|' read st info url <<< "${line}"
+	stUrl+=(["${st}"]="${url}")
+	stInfo+=(["${st}"]="${info}")
+    done<$CONF_FILE
+}
+
+addNewSt() {
+    #todo validation...
+    num=$(cat $CONF_FILE | wc -l)
+    num=$(($num + 1))
+    echo "${num} . . . . ${1} . . . . . ${2}"
+    stUrl+=(["s${num}"]="$2")
+    stInfo+=(["s${num}"]="$1")
+    echo -e "s${num}|$1|$2" >> $CONF_FILE
+}
+usage() {
+    echo -e "usage: $0 \\n \
+      At the radio prompt the following commands are valid\\n \
+      list   ==> list all stations codes\\n \
+      <station-code>\\n \
+      stop   ==> to stop the current playing station.\\n \
+      q|quit   ==> stop playing current station and  quit radio.\\n \
+      add    ==> add a new station\\n\\n \
+use Ctrl-c to exit any time."
+}
+
+station_pid=""
+stopStBg() {
+    if [ ! -z "$station_pid" -a "$station_pid"!=" " ];
+    then
+	kill -9 ${station_pid} > /dev/null 2>&1
+    fi
+}
+startStBg() {
+    if [ ! -z "$1" -a "$1"!=" " ];
+    then
+	stopStBg
+	avplay -nodisp "$1" > /dev/null 2>&1 &
+	station_pid=$!
+	disown
+    fi
+}
+
+printInfo() {
+    echo -e "\\nChoose any of the station Code"
+    echo -e "\\n\\t Code \\t\\tDescription"
+
+    IFS=' ' read x filter <<< "$1"
+    for key in "${!stInfo[@]}"
+    do
+	if [ ! -z "$filter" -a "$filter"!=" " ];
+	then
+	    if [[ $(echo ${stInfo[${key}]} | tr '[:upper:]' '[:lower:]') =~ $(echo "${filter}" | tr '[:upper:]' '[:lower:]') ]];
+	    then
+		echo -e "\\t${key} \\t\\t${stInfo[${key}]}"
+	    fi
+	else
+	    echo -e "\\t${key} \\t\\t${stInfo[${key}]}"
+	fi
+    done
+
+    #for key in "${!stInfo[@]}"
+    #do
+    #echo -e "\\t${key} \\t\\t${stInfo[${key}]}"
+    #done
+}
+
+cleanup() {
+    echo -e "\\nstopping. . ."
+    stopStBg
+    exit 0
+}
+
+trap cleanup SIGINT
+createStMap
+while true
+do
+    read -p "radio>" opt
+    case "${opt}" in
+	fl*|filter*)
+	    printInfo "${opt}"
+	    ;;
+	l|ls|list)
+	    printInfo
+	    ;;
+	s[0-9]*)
+	    startStBg "${stUrl[${opt}]}"
+	    ;;
+	stop)
+	    stopStBg
+	   ;;
+	q|quit)
+	   cleanup
+	   ;;
+	a|add)
+	   read -p "Give station description:" st_desc
+	   read -p "Give station stream url:" st_url
+	   addNewSt "${st_desc}" "${st_url}"
+	   ;;
+	*)
+	    echo "invalid entry. give 'list' or <station-code>"
+	    ;;
+    esac
+done
+
