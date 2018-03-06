@@ -45,7 +45,7 @@ onlyVideo="${scrcastHome}/tmp/${name}-video-xxyy.mp4"
 selfieVideo="${scrcastHome}/tmp/${name}-selfie-xxyy.mp4"
 onlyAudioCleaned="${scrcastsHome}/tmp/${name}-audio-cleaned-xxyy.wav"
 mergedSelfieVideo="${scrcastHome}/tmp/${name}-mergedselfie-xxyy.mp4"
-watermark="./pramati.png"
+watermark="./epam-small.png"
 #fullscreen=$(xwininfo -root | grep 'geometry' | awk '{print $2;}')
 fullscreen=$(xwininfo -root | grep 'geometry' | awk '{print $2;}' |awk -F '+' '{print $1}')
 
@@ -58,7 +58,6 @@ createOutputOptionsString() {
     else
 	#outputOptions="-vcodec libx264 -preset ultrafast -threads 4 -pix_fmt yuv420p -b:v ${video_br} -r:v ${video_fps} -b:a ${audio_br}"
 	outputOptions="-vcodec libx264 -threads 4 -b:v ${video_br} -pix_fmt yuv444p -r:v ${video_fps} -b:a ${audio_br}"
-	echo "XXXXXXXXXXXXXXXXXXXX    ${outputOptions}"
     fi
     echo $outputOptions
 }
@@ -95,6 +94,7 @@ caliberateNoise() {
 	avconv -timelimit 5 -f alsa -i pulse  ${scrcastHome}/tmp/noiseRaw-${name}.wav > /dev/null 2>&1
 	avconv -i ${scrcastHome}/tmp/noiseRaw-${name}.wav -vn -ss 00:00:00 -t 00:00:03 ${scrcastHome}/tmp/noiseRaw-trunk-${name}.wav > /dev/null 2>&1
 	sox ${scrcastHome}/tmp/noiseRaw-trunk-${name}.wav -n noiseprof ${sp}/noise.prof > /dev/null 2>&1
+	exit 0
     fi
 }
 
@@ -123,7 +123,7 @@ startSelfie() {
 
 stopSelfie() {
     if [ $(($option_mask & $OPTION_SELFIE)) -eq $OPTION_SELFIE ]; then
-	kill -9 ${selfie_pid} > $redirectNull
+	kill -9 ${selfie_pid} > /dev/null 2>&1
     fi
 }
 
@@ -131,9 +131,7 @@ startSceencast() {
     if [ $(($option_mask & $OPTION_SCREENCAST)) -eq $OPTION_SCREENCAST ]; then
 	
 	#avconv -f alsa -i pulse -f x11grab -s $fullscreen -same_quant -i :0.0 ${outputOptions} -y ${interimName}
-	echo "avconv -f x11grab -s $fullscreen -i :0.0 -f alsa -i pulse ${outputOptions} -y ${interimName}"
-	avconv -f x11grab -s $fullscreen -i :0.0 -f alsa -i pulse ${outputOptions} -y ${interimName}
-#> /dev/null 2>&1
+	avconv -f x11grab -s $fullscreen -i :0.0 -f alsa -i pulse ${outputOptions} -y ${interimName} > /dev/null 2>&1
     fi
 }
 
@@ -142,7 +140,7 @@ mergeAll() {
 	avconv \
 	    -i ${onlyAudioCleaned} \
 	    -i ${onlyVideo} \
-	    -vf "movie=${selfieVideo} [selfie]; [in][selfie] overlay=main_w-overlay_w-10:main_h-overlay_h-10 [T1]; movie=${watermark} [watermark];[T1][watermark] overlay=main_w-overlay_w-15:main_h-overlay_h-600 [out]" -y ${finalName} > /dev/null 2>&1
+	    -vf "movie=${selfieVideo} [selfie]; [in][selfie] overlay=main_w-overlay_w-10:main_h-overlay_h-10 [T1]; movie=${watermark} [watermark];[T1][watermark] overlay=main_w-overlay_w-15:main_h-overlay_h-150 [out]" -y ${finalName} > /dev/null 2>&1
     else
 	avconv \
 	    -i ${onlyAudioCleaned} \
@@ -156,12 +154,10 @@ mergeAll() {
 
 cleanAudio() {
     if [ $(($option_mask & $OPTION_SCREENCAST)) -eq $OPTION_SCREENCAST ]; then
-	echo "avconv -i ${interimName} -an ${onlyVideo}"
-	avconv -i ${interimName} -an ${onlyVideo}
-	#	> /dev/null 2>&1
-	echo "avconv -i ${interimName} -vn ${onlyAudio}"
-	avconv -i ${interimName} -vn ${onlyAudio}
-#	> /dev/null 2>&1
+	#echo "avconv -i ${interimName} -an ${onlyVideo}"
+	avconv -i ${interimName} -an ${onlyVideo} > /dev/null 2>&1
+	#echo "avconv -i ${interimName} -vn ${onlyAudio}"
+	avconv -i ${interimName} -vn ${onlyAudio} > /dev/null 2>&1
 	sox ${onlyAudio} ${onlyAudioCleaned} noisered noise.prof 0.21 > /dev/null 2>&1
     fi
 }
@@ -169,17 +165,11 @@ cleanAudio() {
 startSC() {
   caliberateNoise
   startSelfie
-  echo "before startscreencast"
   startSceencast
-  echo "after startscr"
   stopSelfie
-  echo "after stop slfie"
   cleanAudio
-  echo "clean audio"
   mergeAll
-  echo "merge all"
-#  cleanup
-#  echo "cleanup. . . ." 
+  cleanup
 }
 echo "Press ^C only once to stop screencast recording, and wait for processing to complete."
 while getopts "rsnp:" o; do
